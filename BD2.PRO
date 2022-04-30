@@ -130,6 +130,8 @@ clauses
 	/*Число лепестков 5*/
 	cond(16,"Leaves=5").
 	
+	
+	/*Факты о противоположных условиях, например где условию, что растение дерево, протовипололожными условиями будут условия куст и трава*/
 	anticond(1,[2,3]).
 	anticond(2,[1,3]).
 	anticond(3,[1,2]).
@@ -143,78 +145,120 @@ clauses
 	anticond(13,[14]).
 	anticond(14,[13]).
 	
+	/*Предикат экспертизы, создаёт окно, вызывает меню и после работы меню завершает программу*/
 	expertism():-makewindow(1,7,7,"Прототип экспертной системы (1)",0,0,25,80),
 	menu(),nl,write("Space->"),readchar(_),exit.
 	
+	/*В меню два пункта консультация или выход*/
 	menu():-write("1.Consult "),nl,write("2.Exit "),nl,
 	write("Your choice (1 or 2)->"),nl,readint(Ch),process(Ch).
 	
+	/*Процессы в меню, либо консультация и очистка данных после неё, либо выход с удалением окна и выход*/
 	process(1):-consultt(),clear().
 	process(2):-removewindow,exit.
 	
+	/*Создаёт два пустых списка с условиями и количеством уже выбранных условий*/
 	consultt():-work([],[],0).
 	
+	/*Основной предикт работы, в котором существует четыре альтернативы*/
+	/*Первая альтернатива, если количесво выбранных условий меньше трёх, то отображаем свободный условия для выбора и предоставляем пользователю
+	сделат выбор из представленных*/
 	work(List,Maybe,Count):-Count<3,!,showfreecond(List,Maybe),takechoice(List,Maybe,Count).
+	/*Если количество выбранных условий больше трёх, то можно продолжить выбирать условия, после положительного ответа отображаются свободные условия
+	и предоставляется выбор*/
 	work(List,Maybe,Count):-Count>3,questionContinue("Continue chooose conditions or look for Plants?(1-yes another_number-no)-->"),
 		showfreecond(List,Maybe),takechoice(List,Maybe,Count).
+	/*В случае отказа уточнения условия происходит попытка нахождения тех растений, в состав которых входят те условия, что были выбраны,
+	если ни одного растения не будет найдено, то произойдет выход из программы, если будет найдено, то на экране отображаются сначала растения,
+	в состав которых входят условия с выбор "да", после выводится список растений с условиями "да" и "может быть", после задаётся вопрос для продолжения уточнения
+	выбора условий или же выход из программы, при придолжении выводятся на экран свободные условия и предоставляется выбор*/
 	work(List,Maybe,Count):-oneElement(List),write("Plants with 'yes' conditions"),nl,lookfor(List),nl,lookHelperMaybe(List,Maybe),
 		questionContinue("Continue chooose conditions?(1-yes another_number-no)-->"),showfreecond(List,Maybe),takechoice(List,Maybe,Count).
+	/*Предикат для выхода из рекурсии без ошибки*/
 	work(_,_,_).
 	
+	/*Предикат для задания вопроса, который при единице возвращает истину */
 	questionContinue(String):-write(String),readint(Choice),eqChoice(Choice).
 	
+	/*Предикат для сравнения с единицей*/
 	eqChoice(1).
 	
+	/*Предикат для вывода списка растений с условиями "может быть", предикат объединяет в единый список условия с ответами "да" и "может быть"
+	проверяет данный список на пустоту, проверяет можно ли найти хотя бы один элемент по данному списку и после всеъ успешных проверок выводит растения*/
 	lookHelperMaybe(List,Maybe):-append(List,Maybe,Result),write("Plants with 'maybe' conditions"),nl,isemptylist(Maybe),oneElement(Result),lookfor(Result),!.
+	/*Предикат для выхода из рекурсии*/
 	lookHelperMaybe(_,_).
 	
+	/*Предикат объединения двух списков*/
 	append([],L2,L2).
 	append([Head|Tail],L2,[Head|Result]):-append(Tail,L2,Result).
 	
+	/*Предикат для проверки на пустой список*/
 	isemptylist([]):-write("The list of coniditions is empty"),nl,!,fail.
 	isemptylist(_).
 	
+	/*Предика для поиска хотя бы одного растения по заданным условиям, берутся последовательно условия для растений и сравниваютс с помощью 
+	предиката подсписков условия*/
 	oneElement(List):-rule(_,_,Name,Conds),sublist(List,Conds),!.
 	oneElement(_):-write("Objects are absent"),nl,!,fail.
 	
+	/*Поиск растений по условиям, также последовательно берутся все растения и в них проверяются условия с помощью предиката подсписков*/
 	lookfor([]):-write("The list of coniditions is empty"),nl,!.
 	lookfor(List):-rule(_,_,Name,Conds),sublist(List,Conds),write("Found plant is "),write(Name),nl,fail.
 	lookfor(_).
 	
+	/*Предикат проверяет являются ли элементы одного списка элементами другого списка, или является список подсписком другого*/
 	sublist([],_).
 	sublist([Head|Tail],Conds):-member(Head,Conds),sublist(Tail,Conds).
 	
+	/*Предикат для выбора условий, пользователю предлагают вести id условия и степень уверенности в нём, после чего это условие проверяемтся,
+	в случае успешной проверки увеличивается количество условий, возврщаетются списки с новым выбранным условием, в случае выбора условия "да", список с 
+	условиями "да", пополнится новым условием,а список с условиями "может быть" останется без изменений, это работает и в обратную сторону, после чего рекурсивно
+	запускается предикат работы, если проверки будут пройдены не удовлетворительно, то предикат скажет о невозможности добавления данного условия */
 	takechoice(List,Maybe,Count):-write("Your choice-->"),readint(Number),cond(Number,_),write("1-yes 2-maybe-->"),readint(Degree),checkanswer(Number,Degree),NewCount=Count+1,
 	returnLists(Number,Degree,List,Maybe,List2,Maybe2),work(List2,Maybe2,NewCount).
 	takechoice(List,Maybe,Count):-write("Your choice is forbidden to add in base data"),nl,work(List,Maybe,Count).
 	
+	/*Предикат для добавления условия в первый или второй список соответственно*/
 	returnLists(Number,1,List,Maybe,[Number|List],Maybe).
 	returnLists(Number,2,List,Maybe,List,[Number|Maybe]).
 	
+	/*Проверка добавляемого условия, если условие уже есть в базе данных, то такое условия нельзя добавлять повторно,
+	если такого нет, то смотрится степень уверенности в условие, и в зависимостри от этого добавляется либо в стпень "да" либо в стпень "может быть"
+	также соотвественно добавляются и условия, которые противоположны*/
 	checkanswer(Number,_):-yes(Number),!,fail.
 	checkanswer(Number,_):-no(Number),!,fail.
 	checkanswer(Number,_):-maybe(Number),!,fail.
 	checkanswer(Number,1):-asserta(yes(Number)),addanticond(Number).
 	checkanswer(Number,2):-asserta(maybe(Number)),addanticond(Number).
 	
+	/*Предикат по добавлению противоположных условий, сначала проверяется, а есть ли у данного условия противоположности, если нет, то просто возвращаем 
+	истину без каких либо добавлений, если есть противоположности, то считываем их и добавляем*/
 	addanticond(Number):-not(anticond(Number,_)).
 	addanticond(Number):-anticond(Number,Conds),addanticond(Number,Conds).
 	
+	/*Проходим по всем противоположным условиям и добавляем их в базу знаний с условием "нет"*/
 	addanticond(_,[]).
 	addanticond(Number,[Head|Tail]):-asserta(no(Head)),addanticond(Number,Tail).
 	
+	/*Отображаем список свободных условий, таким образом, чтобы усовием не было в составе уже выбранных и чтобы оно не было противположным, тем условиям,
+	что уже выбраны*/
 	showfreecond(List,Maybe):-cond(Number,Name),not(member(Number,Maybe)),isanticond(Number,Maybe),not(member(Number,List)),isanticond(Number,List),write(Number),write("-->"),write(Name),nl,fail.
 	showfreecond(_,_).
 
+	/*Проверяем есть ли у условия противоположные условия*/
 	isanticond(Number,_):-not(anticond(Number,_)),!.
 	isanticond(Number,List):-anticond(Number,Conds),checkanticond(List,Conds).
 
+	/*Проверко элементов на то, входят ли они в список противоположных условий*/
 	checkanticond([],_).
 	checkanticond([Head|Tail],AntiCond):-not(member(Head,AntiCond)),checkanticond(Tail,AntiCond).
 
+	/*Предикат для проверки наличия элемента в списке*/
 	member(X,[X|Tail]).
 	member(X,[Head|Tail]):-member(X,Tail).
 	
+	/*Предикат, который очищает базу знаний*/
 	clear():-retract(yes(_)),fail;retract(no(_)),fail;retract(maybe(_)),fail.
 	clear().
 goal
